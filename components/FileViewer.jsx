@@ -194,6 +194,39 @@ export default function FileViewer() {
     });
   }, [handleFiles]);
 
+  // Android native "Open with" bridge (Capacitor build only — no-op on the web/PWA build)
+  useEffect(() => {
+    if (!window.Capacitor?.isNativePlatform?.()) return;
+
+    let listenerHandle;
+    let cancelled = false;
+
+    const toFile = ({ name, mimeType, data }) => {
+      const binary = atob(data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return new File([bytes], name || 'file', { type: mimeType || 'application/octet-stream' });
+    };
+
+    import('@capacitor/core').then(({ registerPlugin }) => {
+      if (cancelled) return;
+      const FileHandler = registerPlugin('FileHandler');
+
+      FileHandler.getLaunchFile().then((result) => {
+        if (result?.name) handleFiles([toFile(result)]);
+      });
+
+      FileHandler.addListener('fileOpened', (result) => {
+        handleFiles([toFile(result)]);
+      }).then((handle) => { listenerHandle = handle; });
+    });
+
+    return () => {
+      cancelled = true;
+      listenerHandle?.remove();
+    };
+  }, [handleFiles]);
+
   const removeFile = (id) => {
     setFiles((prev) => {
       const target = prev.find((f) => f.id === id);
