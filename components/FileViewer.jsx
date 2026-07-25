@@ -8,8 +8,9 @@ import {
   Upload, X, Copy, Download, Search, WrapText, FileCode2, FileImage,
   FileJson2, FileSpreadsheet, FileText, FileType2, Music, Video, Binary,
   Check, AlertTriangle, Loader2, FilePlus2, Eye, Code2, Pencil, Save, Wand2,
-  Type, Archive, Mail, File, Menu,
+  Type, Archive, Mail, File, Menu, Info,
 } from 'lucide-react';
+import AboutModal from './AboutModal';
 import {
   CATEGORIES, classify, formatSize, buildHexDump, looksLikeText, genId, noPreviewNote,
 } from '../lib/fileTypes';
@@ -59,6 +60,7 @@ export default function FileViewer() {
   const [copiedId, setCopiedId] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const inputRef = useRef(null);
   const filesRef = useRef(files);
@@ -273,12 +275,21 @@ export default function FileViewer() {
         <span className="hidden md:inline text-xs text-slate-600">open, preview and edit almost anything</span>
         <div className="flex-1" />
         <button
+          onClick={() => setAboutOpen(true)}
+          className="p-1.5 text-slate-500 hover:text-slate-300"
+          title="About"
+        >
+          <Info size={16} />
+        </button>
+        <button
           onClick={() => inputRef.current?.click()}
           className="flex items-center gap-1.5 text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-md bg-amber-400 text-slate-900 hover:bg-amber-300 transition-colors"
         >
           <Upload size={14} /> Open file
         </button>
       </div>
+
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
 
       <div className="flex-1 flex min-h-0 relative">
         {files.length > 0 && (
