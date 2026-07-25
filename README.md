@@ -17,15 +17,18 @@ No uploads. No backend. No account. Your files never leave your machine.
 
 ---
 
-## Screenshots
+<details>
+<summary><strong>📸 Screenshots (click to expand)</strong></summary>
+<br>
 
 <div align="center">
-<img src="docs/screenshot-code.png" width="32%" alt="Code preview" />
-<img src="docs/screenshot-sheet.png" width="32%" alt="Spreadsheet preview" />
-<img src="docs/screenshot-mobile.png" width="32%" alt="Mobile view" />
+<img src="ss/ssdesktopview1.png" width="45%" alt="Desktop view 1" />
+<img src="ss/ssdesktopview2.png" width="45%" alt="Desktop view 2" />
+<img src="ss/ssmyphoneview.jpg" width="30%" alt="Mobile view 1" />
+<img src="ss/ssmyphoneview2.jpg" width="30%" alt="Mobile view 2" />
 </div>
 
-*(Replace the images above with real screenshots in a `docs/` folder before publishing.)*
+</details>
 
 ## Download
 
