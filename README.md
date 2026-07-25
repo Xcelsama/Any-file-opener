@@ -11,7 +11,7 @@ No uploads. No backend. No account. Your files never leave your machine.
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)]()
 
-[**Live Demo**](https://any-file-opener-ten.vercel.app/) · [**Download Android APK**](https://your-download-host.com/AnyFileViewer.apk) · [Report a Bug](../../issues) · [Request a Feature](../../issues)
+[**Live Demo**](https://any-file-opener-ten.vercel.app/) · [**Download Android APK**](https://github.com/Xcelsama/Any-file-opener/releases/download/App/AnyFile.Viewer.-.v1.0.apk) · [Report a Bug](../../issues) · [Request a Feature](../../issues)
 
 </div>
 
@@ -31,8 +31,8 @@ No uploads. No backend. No account. Your files never leave your machine.
 
 | Platform | Link |
 |---|---|
-| 🌐 Web | [your-app.vercel.app](https://any-file-opener-ten.vercel.app/) |
-| 📱 Android (APK) | [**Download latest APK**](https://your-download-host.com/AnyFileViewer.apk) |
+| 🌐 Web | [any-file-opener-ten.vercel.app](https://any-file-opener-ten.vercel.app/) |
+| 📱 Android (APK) | [**Download latest APK**](https://github.com/Xcelsama/Any-file-opener/releases/download/App/AnyFile.Viewer.-.v1.0.apk) |
 | 💻 Desktop PWA | Install directly from the web link above (Chrome/Edge → install icon in the address bar) |
 
 > The Android APK is not on the Play Store yet — you'll need to allow "install from unknown sources" the first time. This is a self-signed debug build; nothing in it phones home or requests unnecessary permissions.
@@ -44,7 +44,6 @@ No uploads. No backend. No account. Your files never leave your machine.
 - **Zero backend** — every file is read directly via the browser's File API and processed client-side
 - **Installable** as a PWA on desktop, or a native Android app with OS-level "Open with" file-handler support
 - **Offline-capable** — service worker caches the app shell after first load
-- **Safe by default** — untrusted HTML content (`.docx`, Markdown) is sanitized before render; oversized files are rejected before they can freeze the tab
 
 <details>
 <summary><strong>Full list of what renders natively</strong></summary>
@@ -73,7 +72,6 @@ No uploads. No backend. No account. Your files never leave your machine.
 - **Styling:** Tailwind CSS
 - **Editor:** CodeMirror 6
 - **Parsing:** `xlsx`, `papaparse`, `mammoth`, `jszip` — all dynamically imported on demand
-- **Sanitization:** DOMPurify
 - **Native shell:** Capacitor (Android)
 
 ## Getting started
