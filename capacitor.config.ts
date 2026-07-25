@@ -5,8 +5,7 @@ const config: CapacitorConfig = {
   appName: 'AnyFile Viewer',
   webDir: 'public',
   server: {
-    // TODO: replace with your real Vercel URL before building
-    url: 'https://your-app.vercel.app',
+ url:'https://any-file-opener-ten.vercel.app/',
     cleartext: false,
   },
 };
