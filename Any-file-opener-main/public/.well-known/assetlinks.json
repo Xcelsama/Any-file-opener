@@ -1,8 +1,0 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.xcelsama.anyfileviewer",
-        "sha256_cert_fingerprints": ["71:47:36:67:EA:74:17:4B:78:1B:C0:EA:42:9A:55:EA:8B:6D:02:F8:2B:51:E4:8F:D1:22:D8:1D:A2:C5:8F:25"]
-      }
-    }]
