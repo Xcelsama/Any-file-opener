@@ -183,6 +183,17 @@ export default function FileViewer() {
     records.forEach((rec, idx) => processFile(arr[idx], rec.id, rec));
   }, [processFile]);
 
+  useEffect(() => {
+    if (!('launchQueue' in window)) return;
+    window.launchQueue.setConsumer(async (launchParams) => {
+      if (!launchParams.files || !launchParams.files.length) return;
+      const openedFiles = await Promise.all(
+        launchParams.files.map((fileHandle) => fileHandle.getFile())
+      );
+      handleFiles(openedFiles);
+    });
+  }, [handleFiles]);
+
   const removeFile = (id) => {
     setFiles((prev) => {
       const target = prev.find((f) => f.id === id);
