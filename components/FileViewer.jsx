@@ -359,32 +359,9 @@ export default function FileViewer() {
               <div>
                 <div className="text-slate-200 font-medium mb-1">Drop any file here, or click Open file</div>
                 <div className="text-xs text-slate-500 max-w-md">
-                  Over 300 file types across code, documents, spreadsheets, images, audio, video, archives, fonts and more.
-                  Code and text edit in place, common documents get a native preview, and anything unrecognized still
-                  opens as a hex dump.
+                  Code and text edit in place, common documents and media get a native preview, and anything else
+                  still opens as a hex dump so you can see what's inside.
                 </div>
-              </div>
-              <div className="flex flex-col gap-2 max-w-lg w-full">
-                {[
-                  ['code', ['.js', '.py', '.java', '.go', '.rs', '.sql', '.sh']],
-                  ['markup', ['.html', '.css', '.json', '.yaml', '.xml']],
-                  ['docs', ['.md', '.pdf', '.docx', '.txt']],
-                  ['spreadsheet', ['.xlsx', '.csv', '.ods']],
-                  ['image', ['.png', '.jpg', '.svg', '.webp']],
-                  ['audio', ['.mp3', '.wav', '.flac']],
-                  ['video', ['.mp4', '.mov', '.webm']],
-                  ['archive', ['.zip', '.jar']],
-                  ['font', ['.ttf', '.woff2']],
-                ].map(([cat, exts]) => (
-                  <div key={cat} className="flex items-center gap-2 flex-wrap justify-center">
-                    <span className="text-[10px] font-semibold uppercase tracking-wide w-24 text-right flex-shrink-0" style={{ color: CATEGORIES[cat].color }}>
-                      {CATEGORIES[cat].label}
-                    </span>
-                    {exts.map((ext) => (
-                      <span key={ext} className="text-[10px] font-mono px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-500">{ext}</span>
-                    ))}
-                  </div>
-                ))}
               </div>
             </div>
           )}
