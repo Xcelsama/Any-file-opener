@@ -62,7 +62,28 @@ uploaded, so there's nothing to persist server-side. You'd only need one if you 
 links, or multi-person editing later; a small setup for that would be Vercel Blob (or S3) for the file bytes plus
 a lightweight database like Vercel Postgres or Supabase for metadata.
 
-## Project structure
+## Turning it into an Android APK
+
+This is now a fully installable PWA (manifest, icons, offline service worker), which is exactly what's needed to
+package it as a real Android app. The easiest path, entirely from your phone, no Android Studio:
+
+1. Deploy this to Vercel first (see above) and confirm the live URL loads correctly, including the icon in the browser tab.
+2. Go to **pwabuilder.com** in your phone's browser.
+3. Paste your Vercel URL and tap **Start**. It will detect the manifest and icons automatically.
+4. Tap the **Android** package option, then **Generate**. It builds a signed APK (and an AAB if you want Play Store later) and gives you a download link.
+5. Download the APK, open it, allow "install from this source" if Android asks, and install.
+
+That's it — the app icon you'll see on the home screen is the amber upload arrow generated in `public/icon-512.png`.
+
+If you'd rather build it yourself with more control (custom app ID, splash screen tweaks, later a Play Store
+release), the tool for that is **Bubblewrap** (`npx @bubblewrap/cli init --manifest=https://your-app.vercel.app/manifest.webmanifest`), but it needs a JDK and the Android SDK installed, so it's a desktop job, not a phone job.
+
+## Offline support
+
+`public/sw.js` caches the app shell so the site keeps working with no signal after the first load — fitting, since
+every file operation already happens entirely on your device.
+
+
 
 ```
 app/
