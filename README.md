@@ -57,7 +57,7 @@ npx vercel
 
 ## Do you need a database?
 
-No. Every file is read straight off your device with the browser's File API and never leaves it — nothing is
+No. Every file is read straight off your device with the browser's File API and never leaves it nothing is
 uploaded, so there's nothing to persist server-side. You'd only need one if you wanted saved history, shareable
 links, or multi-person editing later; a small setup for that would be Vercel Blob (or S3) for the file bytes plus
 a lightweight database like Vercel Postgres or Supabase for metadata.
