@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Offline — AnyFile Viewer</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #0b0e14;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .card { padding: 2rem; max-width: 22rem; }
+  h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.5rem; color: #f8fafc; }
+  p { font-size: 0.875rem; color: #94a3b8; line-height: 1.5; margin: 0 0 1.25rem; }
+  button {
+    background: #00c8ff;
+    color: #0b0e14;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>You're offline</h1>
+    <p>AnyFile Viewer couldn't reach the network, and this page hasn't been cached yet on this device. Files already open in this session (if any) are unaffected — reconnect and reload to get back to the app.</p>
+    <button onclick="location.reload()">Try again</button>
+  </div>
+</body>
+</html>

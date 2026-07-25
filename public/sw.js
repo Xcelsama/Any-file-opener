@@ -1,5 +1,5 @@
 const CACHE_NAME = 'anyfile-viewer-v2';
-const APP_SHELL = ['/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
+const APP_SHELL = ['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/offline.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -36,7 +36,12 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() =>
+          caches.match(event.request).then((cached) => {
+            if (cached) return cached;
+            return isNavigation ? caches.match('/offline.html') : undefined;
+          })
+        )
     );
     return;
   }

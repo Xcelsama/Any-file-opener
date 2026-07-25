@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import * as XLSX from 'xlsx';
-import Papa from 'papaparse';
-import mammoth from 'mammoth';
+import DOMPurify from 'isomorphic-dompurify';
 import {
   Upload, X, Copy, Download, Search, WrapText, FileCode2, FileImage,
   FileJson2, FileSpreadsheet, FileText, FileType2, Music, Video, Binary,
@@ -14,9 +12,11 @@ import AboutModal from './AboutModal';
 import {
   CATEGORIES, classify, formatSize, buildHexDump, looksLikeText, genId, noPreviewNote,
 } from '../lib/fileTypes';
+import { MAX_TEXT_FILE_SIZE, MAX_BINARY_FILE_SIZE, TEXT_LIMITED_KINDS, BINARY_LIMITED_KINDS } from '../lib/constants';
 import { renderMarkdown } from '../lib/markdown';
 import { readArchive } from '../lib/archive';
 import { parseEml } from '../lib/eml';
+import usePwaFileHandling from '../hooks/usePwaFileHandling';
 import CodeEditor from './CodeEditor';
 import FontPreview from './FontPreview';
 import ArchiveBrowser from './ArchiveBrowser';
@@ -82,6 +82,23 @@ export default function FileViewer() {
         return;
       }
 
+      // Guard against freezing the tab/WebView on unexpectedly huge files —
+      // everything below this point reads the whole file into memory first.
+      if (TEXT_LIMITED_KINDS.includes(kind) && file.size > MAX_TEXT_FILE_SIZE) {
+        updateFile(id, {
+          status: 'error',
+          error: `This file is ${formatSize(file.size)}, larger than the ${formatSize(MAX_TEXT_FILE_SIZE)} preview limit for this file type. Download it to view in a dedicated app instead.`,
+        });
+        return;
+      }
+      if (BINARY_LIMITED_KINDS.includes(kind) && file.size > MAX_BINARY_FILE_SIZE) {
+        updateFile(id, {
+          status: 'error',
+          error: `This file is ${formatSize(file.size)}, larger than the ${formatSize(MAX_BINARY_FILE_SIZE)} preview limit for this file type. Download it to view in a dedicated app instead.`,
+        });
+        return;
+      }
+
       if (kind === 'font') {
         const buffer = await file.arrayBuffer();
         updateFile(id, { buffer, status: 'ready' });
@@ -104,13 +121,17 @@ export default function FileViewer() {
 
       if (kind === 'docx') {
         const arrayBuffer = await file.arrayBuffer();
+        const { default: mammoth } = await import('mammoth');
         const result = await mammoth.convertToHtml({ arrayBuffer });
-        updateFile(id, { html: result.value, status: 'ready' });
+        // Sanitize once here (not on every render) — docx content is
+        // untrusted input, and this HTML gets rendered via dangerouslySetInnerHTML.
+        updateFile(id, { html: DOMPurify.sanitize(result.value), status: 'ready' });
         return;
       }
 
       if (kind === 'sheet') {
         const arrayBuffer = await file.arrayBuffer();
+        const XLSX = await import('xlsx');
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheets = {};
         workbook.SheetNames.forEach((name) => {
@@ -122,6 +143,7 @@ export default function FileViewer() {
 
       if (kind === 'csv') {
         const text = await file.text();
+        const { default: Papa } = await import('papaparse');
         const parsed = Papa.parse(text.trim(), { skipEmptyLines: true });
         updateFile(id, {
           text,
@@ -183,49 +205,7 @@ export default function FileViewer() {
     records.forEach((rec, idx) => processFile(arr[idx], rec.id, rec));
   }, [processFile]);
 
-  useEffect(() => {
-    if (!('launchQueue' in window)) return;
-    window.launchQueue.setConsumer(async (launchParams) => {
-      if (!launchParams.files || !launchParams.files.length) return;
-      const openedFiles = await Promise.all(
-        launchParams.files.map((fileHandle) => fileHandle.getFile())
-      );
-      handleFiles(openedFiles);
-    });
-  }, [handleFiles]);
-
-  // Android native "Open with" bridge (Capacitor build only — no-op on the web/PWA build)
-  useEffect(() => {
-    if (!window.Capacitor?.isNativePlatform?.()) return;
-
-    let listenerHandle;
-    let cancelled = false;
-
-    const toFile = ({ name, mimeType, data }) => {
-      const binary = atob(data);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-      return new window.File([bytes], name || 'file', { type: mimeType || 'application/octet-stream' });
-    };
-
-    import('@capacitor/core').then(({ registerPlugin }) => {
-      if (cancelled) return;
-      const FileHandler = registerPlugin('FileHandler');
-
-      FileHandler.getLaunchFile().then((result) => {
-        if (result?.name) handleFiles([toFile(result)]);
-      });
-
-      FileHandler.addListener('fileOpened', (result) => {
-        handleFiles([toFile(result)]);
-      }).then((handle) => { listenerHandle = handle; });
-    });
-
-    return () => {
-      cancelled = true;
-      listenerHandle?.remove();
-    };
-  }, [handleFiles]);
+  usePwaFileHandling(handleFiles);
 
   const removeFile = (id) => {
     setFiles((prev) => {
@@ -618,7 +598,7 @@ export default function FileViewer() {
 
                 {active.status === 'ready' && active.kind === 'markdown' && !showRaw && (
                   <div className="p-3 sm:p-6">
-                    <div className="bg-white text-slate-900 rounded-lg shadow-2xl mx-auto max-w-3xl p-6 sm:p-10 md-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(active.text) }} />
+                    <div className="bg-white text-slate-900 rounded-lg shadow-2xl mx-auto max-w-3xl p-6 sm:p-10 md-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(active.text)) }} />
                   </div>
                 )}
 
