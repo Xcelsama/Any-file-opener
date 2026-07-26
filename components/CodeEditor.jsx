@@ -163,7 +163,13 @@ function extensionFor(lang) {
   return build ? build() : [];
 }
 
-export default function CodeEditor({ value, lang, readOnly, onChange, wrap }) {
+const FONT_STACKS = {
+  mono: "'JetBrains Mono', 'Fira Code', ui-monospace, Menlo, Consolas, monospace",
+  sans: "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  serif: "Georgia, 'Times New Roman', serif",
+};
+
+export default function CodeEditor({ value, lang, readOnly, onChange, wrap, fontFamily = 'mono', fontSize = 13 }) {
   return (
     <CodeMirror
       value={value}
@@ -173,8 +179,13 @@ export default function CodeEditor({ value, lang, readOnly, onChange, wrap }) {
       editable={!readOnly}
       readOnly={readOnly}
       onChange={onChange}
-      basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: !readOnly }}
-      style={{ height: '100%', fontSize: 13, whiteSpace: wrap ? 'pre-wrap' : 'pre' }}
+      basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: !readOnly, searchKeymap: true }}
+      style={{
+        height: '100%',
+        fontSize,
+        fontFamily: FONT_STACKS[fontFamily] || FONT_STACKS.mono,
+        whiteSpace: wrap ? 'pre-wrap' : 'pre',
+      }}
     />
   );
 }

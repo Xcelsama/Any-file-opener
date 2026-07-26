@@ -12,6 +12,8 @@
     "@capacitor/android": "^6.2.0",
     "@capacitor/core": "^6.2.0",
     "isomorphic-dompurify": "^2.14.0",
+    "pdfjs-dist": "3.11.174",
+    "pdf-lib": "^1.17.1",
     "@codemirror/lang-cpp": "^6.0.2",
     "@codemirror/lang-css": "^6.2.1",
     "@codemirror/lang-html": "^6.4.9",

@@ -19,6 +19,7 @@ import { sniffFile } from '../lib/magicBytes';
 import { parseEml } from '../lib/eml';
 import usePwaFileHandling from '../hooks/usePwaFileHandling';
 import CodeEditor from './CodeEditor';
+import PdfViewer from './PdfViewer';
 import FontPreview from './FontPreview';
 import ArchiveBrowser from './ArchiveBrowser';
 import EmailView from './EmailView';
@@ -78,6 +79,8 @@ export default function FileViewer() {
   const [activeId, setActiveId] = useState(null);
   const [query, setQuery] = useState('');
   const [wrap, setWrap] = useState(false);
+  const [fontFamily, setFontFamily] = useState('mono');
+  const [fontSize, setFontSize] = useState(13);
   const [showRaw, setShowRaw] = useState(false);
   const [editing, setEditing] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
@@ -514,6 +517,21 @@ export default function FileViewer() {
                   </button>
                 )}
 
+                {(EDITABLE_KINDS.includes(active.kind) || ((active.kind === 'markdown' || active.kind === 'csv') && showRaw)) && (
+                  <>
+                    <button
+                      onClick={() => setFontFamily((f) => (f === 'mono' ? 'sans' : f === 'sans' ? 'serif' : 'mono'))}
+                      title={`Font: ${fontFamily} (click to cycle Mono / Sans / Serif)`}
+                      className="p-1.5 rounded hover:bg-slate-800 text-slate-400 flex-shrink-0 text-[10px] font-semibold uppercase w-6 text-center"
+                    >
+                      {fontFamily === 'mono' ? 'M' : fontFamily === 'sans' ? 'S' : 'Se'}
+                    </button>
+                    <button onClick={() => setFontSize((s) => Math.max(10, s - 1))} title="Smaller text" className="p-1.5 rounded hover:bg-slate-800 text-slate-400 flex-shrink-0 text-xs font-medium">A-</button>
+                    <span className="text-[10px] text-slate-500 w-5 text-center flex-shrink-0 font-mono">{fontSize}</span>
+                    <button onClick={() => setFontSize((s) => Math.min(28, s + 1))} title="Larger text" className="p-1.5 rounded hover:bg-slate-800 text-slate-400 flex-shrink-0 text-xs font-medium">A+</button>
+                  </>
+                )}
+
                 {active.kind === 'json' && (
                   <button onClick={() => formatJson(active)} title="Format JSON" className="p-1.5 rounded hover:bg-slate-800 text-slate-400 flex-shrink-0">
                     <Wand2 size={14} />
@@ -618,7 +636,7 @@ export default function FileViewer() {
                 )}
 
                 {active.status === 'ready' && active.kind === 'pdf' && (
-                  <iframe src={active.url} title={active.name} className="w-full h-full bg-white border-0" />
+                  <PdfViewer url={active.url} name={active.name} />
                 )}
 
                 {active.status === 'ready' && active.kind === 'audio' && !mediaFailed && (
@@ -715,6 +733,8 @@ export default function FileViewer() {
                     lang="text"
                     readOnly={!editing}
                     wrap={wrap}
+                    fontFamily={fontFamily}
+                    fontSize={fontSize}
                     onChange={(val) => updateFile(active.id, { text: val, modified: val !== active.text ? true : active.modified })}
                   />
                 )}
@@ -725,6 +745,8 @@ export default function FileViewer() {
                     lang="json"
                     readOnly={!editing}
                     wrap={wrap}
+                    fontFamily={fontFamily}
+                    fontSize={fontSize}
                     onChange={(val) => updateFile(active.id, { text: val, modified: true })}
                   />
                 )}
@@ -741,6 +763,8 @@ export default function FileViewer() {
                     lang="markdown"
                     readOnly={!editing}
                     wrap={wrap}
+                    fontFamily={fontFamily}
+                    fontSize={fontSize}
                     onChange={(val) => updateFile(active.id, { text: val, modified: true })}
                   />
                 )}
@@ -751,6 +775,8 @@ export default function FileViewer() {
                     lang={active.lang}
                     readOnly={!editing}
                     wrap={wrap}
+                    fontFamily={fontFamily}
+                    fontSize={fontSize}
                     onChange={(val) => updateFile(active.id, { text: val, modified: true })}
                   />
                 )}
