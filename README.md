@@ -4,47 +4,67 @@
 
 **Open, preview, and edit almost any file type — entirely on your device.**
 
-No uploads. No backend. No account. Your files never leave your machine.
+No uploads. No backend. No account. No ads. Your files never leave your machine.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Web%20%7C%20PWA%20%7C%20Android-informational)]()
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)]()
 
-[**Live Demo**](https://any-file-opener-ten.vercel.app/) · [**Download Android APK**](https://your-download-host.com/AnyFileViewer.apk) · [Report a Bug](../../issues) · [Request a Feature](../../issues)
+[**Live Demo**](https://any-file-opener-ten.vercel.app/) · [**Download Android APK**](https://github.com/Xcelsama/Any-file-opener/releases/download/App/AnyFile.Viewer.-.v1.0.apk) · [Report a Bug](../../issues) · [Request a Feature](../../issues)
 
 </div>
 
 ---
 
-## Screenshots
+<details>
+<summary><strong>📸 Screenshots (click to expand)</strong></summary>
+<br>
 
 <div align="center">
-<img src="docs/screenshot-code.png" width="32%" alt="Code preview" />
-<img src="docs/screenshot-sheet.png" width="32%" alt="Spreadsheet preview" />
-<img src="docs/screenshot-mobile.png" width="32%" alt="Mobile view" />
+<img src="ss/ssdesktopview1.png" width="45%" alt="Desktop view 1" />
+<img src="ss/ssdesktopview2.png" width="45%" alt="Desktop view 2" />
+<img src="ss/ssmyphoneview.jpg" width="30%" alt="Mobile view 1" />
+<img src="ss/ssmyphoneview2.jpg" width="30%" alt="Mobile view 2" />
 </div>
 
-*(Replace the images above with real screenshots in a `docs/` folder before publishing.)*
+</details>
 
 ## Download
 
 | Platform | Link |
 |---|---|
-| 🌐 Web | [your-app.vercel.app](https://any-file-opener-ten.vercel.app/) |
-| 📱 Android (APK) | [**Download latest APK**](https://your-download-host.com/AnyFileViewer.apk) |
+| 🌐 Web | [any-file-opener-ten.vercel.app](https://any-file-opener-ten.vercel.app/) |
+| 📱 Android (APK) | [**Download latest APK**](https://github.com/Xcelsama/Any-file-opener/releases/download/App/AnyFile.Viewer.-.v1.0.apk) |
 | 💻 Desktop PWA | Install directly from the web link above (Chrome/Edge → install icon in the address bar) |
 
 > The Android APK is not on the Play Store yet — you'll need to allow "install from unknown sources" the first time. This is a self-signed debug build; nothing in it phones home or requests unnecessary permissions.
 
+## Why this instead of a generic "online file viewer"
+
+Most web-based file viewers upload your file to a server to process it, then show you ads while you wait. AnyFile Viewer doesn't:
+
+| | Typical online file viewer | AnyFile Viewer |
+|---|---|---|
+| Where your file goes | Uploaded to a server, often kept for a while | Never leaves the browser — File API only |
+| Ads / tracking | Usually both | Neither |
+| Editing | View-only | Live in-place editing for code, JSON, Markdown, CSV |
+| Works offline | No | Yes, after first load (service worker) |
+| Format detection | Extension-based | Extension **plus** magic-byte signature detection — flags files whose content doesn't match their name |
+
+You can verify the privacy claim yourself: open the app, turn off wifi, and it still works.
+
 ## Features
 
 - **317 recognized file extensions** across code, documents, spreadsheets, images, audio, video, archives, fonts, email, and more
+- **Magic-byte format detection** — identifies the real file type from its binary signature, not just the extension, and flags mismatches (e.g. a `.png` renamed to `.txt`); also peeks inside zip-based files to correctly recognize a `.docx`/`.xlsx`/`.epub` even if it's misnamed as a plain `.zip`
+- **File metadata** — dimensions for images/video, duration for audio/video, entry counts for archives, last-modified date, shown right under the toolbar
+- **Client-side image conversion** — save any previewable image as PNG, JPEG, or WebP, no upload round-trip
 - **Live code editing** with syntax highlighting for 40+ languages (via CodeMirror)
 - **Zero backend** — every file is read directly via the browser's File API and processed client-side
 - **Installable** as a PWA on desktop, or a native Android app with OS-level "Open with" file-handler support
 - **Offline-capable** — service worker caches the app shell after first load
-- **Safe by default** — untrusted HTML content (`.docx`, Markdown) is sanitized before render; oversized files are rejected before they can freeze the tab
+- **Safe by default** — HTML from `.docx`/Markdown is sanitized with DOMPurify before rendering; oversized files are rejected before they can freeze the tab
 
 <details>
 <summary><strong>Full list of what renders natively</strong></summary>
@@ -54,16 +74,16 @@ No uploads. No backend. No account. Your files never leave your machine.
 | Code & text | Syntax-highlighted, in-place editable |
 | JSON | Editable + one-click formatter |
 | Markdown | Rendered view with raw/edit toggle |
-| Images | Native preview (png, jpg, gif, webp, svg, avif, heic, tiff, ...) |
+| Images | Native preview (png, jpg, gif, webp, svg, avif, heic, tiff, ...) + convert to PNG/JPEG/WebP |
 | PDF | Inline viewer |
-| Word (.docx) | Converted to readable HTML |
+| Word (.docx) | Converted to sanitized, readable HTML |
 | Excel / CSV / ODS | Spreadsheet table view |
-| Audio / Video | Native players |
+| Audio / Video | Native players, duration shown |
 | Fonts (ttf, otf, woff, woff2) | Live specimen preview |
-| Archives (zip, jar, war, epub) | Contents listing, no extraction needed |
+| Archives (zip, jar, war, epub) | Contents listing, no extraction needed, EPUB title detection |
 | Email (.eml) | Parsed header + body |
 | Everything else recognized | "No preview" card with download button |
-| Unrecognized | Auto-sniffed as text (editor) or binary (hex dump) |
+| Unrecognized | Magic-byte sniffed first, then auto-detected as text (editor) or binary (hex dump) |
 
 </details>
 
@@ -112,7 +132,7 @@ Then, in Android Studio: **Build → Generate App Bundles or APKs → Generate A
 app/            Next.js routes and global styles
 components/     UI components (viewer, editor, previews)
 hooks/          Platform-bridging hooks (PWA + native file handling)
-lib/            File classification, parsing helpers, safety limits
+lib/            File classification, magic-byte detection, parsing helpers, safety limits
 android/        Native Capacitor Android project
 ```
 

@@ -6,7 +6,7 @@ import {
   Upload, X, Copy, Download, Search, WrapText, FileCode2, FileImage,
   FileJson2, FileSpreadsheet, FileText, FileType2, Music, Video, Binary,
   Check, AlertTriangle, Loader2, FilePlus2, Eye, Code2, Pencil, Save, Wand2,
-  Type, Archive, Mail, File, Menu, Info,
+  Type, Archive, Mail, File, Menu, Info, ImageDown,
 } from 'lucide-react';
 import AboutModal from './AboutModal';
 import {
@@ -14,7 +14,8 @@ import {
 } from '../lib/fileTypes';
 import { MAX_TEXT_FILE_SIZE, MAX_BINARY_FILE_SIZE, TEXT_LIMITED_KINDS, BINARY_LIMITED_KINDS } from '../lib/constants';
 import { renderMarkdown } from '../lib/markdown';
-import { readArchive } from '../lib/archive';
+import { readArchive, refineZipKind } from '../lib/archive';
+import { sniffFile } from '../lib/magicBytes';
 import { parseEml } from '../lib/eml';
 import usePwaFileHandling from '../hooks/usePwaFileHandling';
 import CodeEditor from './CodeEditor';
@@ -22,6 +23,28 @@ import FontPreview from './FontPreview';
 import ArchiveBrowser from './ArchiveBrowser';
 import EmailView from './EmailView';
 import NoPreviewCard from './NoPreviewCard';
+
+function formatDuration(seconds) {
+  if (!Number.isFinite(seconds)) return null;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function formatDate(ts) {
+  if (!ts) return null;
+  return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function metaLine(file) {
+  const parts = [formatSize(file.size)];
+  if (file.detectedNote) parts.push(`detected as ${file.detectedNote.label}`);
+  if (file.meta?.width) parts.push(`${file.meta.width} × ${file.meta.height}`);
+  if (file.meta?.duration) parts.push(formatDuration(file.meta.duration));
+  if (file.kind === 'archive' && file.entries) parts.push(`${file.entries.length} entries`);
+  if (file.lastModified) parts.push(formatDate(file.lastModified));
+  return parts.filter(Boolean).join(' · ');
+}
 
 const EDITABLE_KINDS = ['code', 'json'];
 
@@ -62,21 +85,56 @@ export default function FileViewer() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
   const inputRef = useRef(null);
   const filesRef = useRef(files);
   const dragCounter = useRef(0);
 
   useEffect(() => { filesRef.current = files; }, [files]);
   useEffect(() => () => { filesRef.current.forEach((f) => f.url && URL.revokeObjectURL(f.url)); }, []);
-  useEffect(() => { setEditing(false); setShowRaw(false); setMediaFailed(false); }, [activeId]);
+  useEffect(() => { setEditing(false); setShowRaw(false); setMediaFailed(false); setConvertOpen(false); }, [activeId]);
 
   const updateFile = useCallback((id, patch) => {
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   }, []);
 
   const processFile = useCallback(async (file, id, info) => {
-    const { kind, ext } = info;
     try {
+      const detected = await sniffFile(file);
+      let kind = info.kind;
+      let category = info.category;
+      let ext = info.ext;
+      let lang = info.lang;
+      let detectedNote = null;
+
+      if (detected) {
+        const consistentZip = detected.kind === 'archive' && ['docx', 'sheet', 'archive'].includes(kind);
+        if (detected.kind !== kind && !consistentZip) {
+          detectedNote = { label: detected.label, namedAs: `.${ext}` };
+          kind = detected.kind;
+          category = detected.category || category;
+          ext = detected.ext;
+          lang = detected.lang;
+        }
+      }
+
+      if (detected?.ext === 'zip' && kind === 'archive') {
+        try {
+          const buffer = await file.arrayBuffer();
+          const refined = await refineZipKind(buffer);
+          if (refined && refined.kind !== kind) {
+            detectedNote = { label: refined.label, namedAs: `.${info.ext}` };
+            ({ kind, category, ext } = refined);
+          }
+        } catch {
+          // not a valid zip after all — keep whatever we already resolved above
+        }
+      }
+
+      if (kind !== info.kind || category !== info.category || ext !== info.ext) {
+        updateFile(id, { kind, category, ext, lang, detectedNote });
+      }
+
       if (['image', 'pdf', 'audio', 'video', 'nopreview'].includes(kind)) {
         updateFile(id, { status: 'ready' });
         return;
@@ -197,7 +255,8 @@ export default function FileViewer() {
       const info = classify(file.name);
       return {
         id: genId(), name: file.name, size: file.size, ext: info.ext, kind: info.kind,
-        category: info.category, lang: info.lang, status: 'loading', url: URL.createObjectURL(file), modified: false,
+        category: info.category, lang: info.lang, lastModified: file.lastModified,
+        status: 'loading', url: URL.createObjectURL(file), modified: false,
       };
     });
     setFiles((prev) => [...prev, ...records]);
@@ -233,15 +292,44 @@ export default function FileViewer() {
   };
 
   const downloadFile = (file) => {
-    const isTextKind = ['code', 'json', 'markdown', 'csv'].includes(file.kind);
-    const href = isTextKind ? URL.createObjectURL(new Blob([file.text ?? ''], { type: 'text/plain' })) : file.url;
+    const useEditedText = file.modified && file.text !== undefined;
+    const href = useEditedText ? URL.createObjectURL(new Blob([file.text], { type: 'text/plain' })) : file.url;
     const a = document.createElement('a');
     a.href = href;
     a.download = file.name;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    if (isTextKind) URL.revokeObjectURL(href);
+    if (useEditedText) URL.revokeObjectURL(href);
+  };
+
+  const convertImage = (file, format) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (format === 'jpeg') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const href = URL.createObjectURL(blob);
+        const baseName = file.name.replace(/\.[^.]+$/, '');
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = `${baseName}.${format === 'jpeg' ? 'jpg' : format}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+      }, `image/${format}`, 0.92);
+    };
+    img.src = file.url;
+    setConvertOpen(false);
   };
 
   const formatJson = (file) => {
@@ -432,6 +520,27 @@ export default function FileViewer() {
                   </button>
                 )}
 
+                {active.kind === 'image' && !mediaFailed && (
+                  <div className="relative flex-shrink-0">
+                    <button onClick={() => setConvertOpen((v) => !v)} title="Convert to another format" className="p-1.5 rounded hover:bg-slate-800 text-slate-400">
+                      <ImageDown size={14} />
+                    </button>
+                    {convertOpen && (
+                      <div className="absolute right-0 top-full mt-1 z-10 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden shadow-2xl">
+                        {['png', 'jpeg', 'webp'].map((format) => (
+                          <button
+                            key={format}
+                            onClick={() => convertImage(active, format)}
+                            className="block w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 whitespace-nowrap"
+                          >
+                            Save as .{format === 'jpeg' ? 'jpg' : format}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {(active.kind === 'markdown' || active.kind === 'csv') && (
                   <button
                     onClick={() => setShowRaw((r) => !r)}
@@ -463,6 +572,17 @@ export default function FileViewer() {
                 </button>
               </div>
 
+              {active.status === 'ready' && metaLine(active) && (
+                <div className="px-2.5 sm:px-4 py-1 text-[10px] text-slate-500 border-b border-slate-800/60 bg-slate-900/20 flex-shrink-0">
+                  {active.detectedNote && (
+                    <span className="text-amber-400">
+                      Named {active.detectedNote.namedAs}, but content looks like a {active.detectedNote.label}.{' '}
+                    </span>
+                  )}
+                  {metaLine(active)}
+                </div>
+              )}
+
               <div className="flex-1 overflow-auto min-h-0">
                 {active.status === 'loading' && (
                   <div className="h-full flex items-center justify-center gap-2 text-slate-500 text-sm">
@@ -489,6 +609,7 @@ export default function FileViewer() {
                       alt={active.name}
                       className="max-w-full max-h-full object-contain rounded shadow-2xl"
                       onError={() => setMediaFailed(true)}
+                      onLoad={(e) => updateFile(active.id, { meta: { width: e.target.naturalWidth, height: e.target.naturalHeight } })}
                     />
                   </div>
                 )}
@@ -502,7 +623,13 @@ export default function FileViewer() {
 
                 {active.status === 'ready' && active.kind === 'audio' && !mediaFailed && (
                   <div className="h-full flex items-center justify-center p-6">
-                    <audio controls src={active.url} className="w-full max-w-md" onError={() => setMediaFailed(true)} />
+                    <audio
+                      controls
+                      src={active.url}
+                      className="w-full max-w-md"
+                      onError={() => setMediaFailed(true)}
+                      onLoadedMetadata={(e) => updateFile(active.id, { meta: { duration: e.target.duration } })}
+                    />
                   </div>
                 )}
                 {active.status === 'ready' && active.kind === 'audio' && mediaFailed && (
@@ -511,7 +638,13 @@ export default function FileViewer() {
 
                 {active.status === 'ready' && active.kind === 'video' && !mediaFailed && (
                   <div className="h-full flex items-center justify-center p-6">
-                    <video controls src={active.url} className="max-w-full max-h-full rounded shadow-2xl" onError={() => setMediaFailed(true)} />
+                    <video
+                      controls
+                      src={active.url}
+                      className="max-w-full max-h-full rounded shadow-2xl"
+                      onError={() => setMediaFailed(true)}
+                      onLoadedMetadata={(e) => updateFile(active.id, { meta: { duration: e.target.duration, width: e.target.videoWidth, height: e.target.videoHeight } })}
+                    />
                   </div>
                 )}
                 {active.status === 'ready' && active.kind === 'video' && mediaFailed && (
