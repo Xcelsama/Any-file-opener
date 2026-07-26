@@ -64,7 +64,7 @@ You can verify the privacy claim yourself: open the app, turn off wifi, and it s
 - **Zero backend** — every file is read directly via the browser's File API and processed client-side
 - **Installable** as a PWA on desktop, or a native Android app with OS-level "Open with" file-handler support
 - **Offline-capable** — service worker caches the app shell after first load
-- **Safe by default** — HTML from `.docx`/Markdown is sanitized with DOMPurify before rendering; oversized files are rejected before they can freeze the tab
+- **Safe by default** — untrusted HTML content (`.docx`, Markdown) is sanitized before render; oversized files are rejected before they can freeze the tab
 
 <details>
 <summary><strong>Full list of what renders natively</strong></summary>
@@ -93,7 +93,6 @@ You can verify the privacy claim yourself: open the app, turn off wifi, and it s
 - **Styling:** Tailwind CSS
 - **Editor:** CodeMirror 6
 - **Parsing:** `xlsx`, `papaparse`, `mammoth`, `jszip` — all dynamically imported on demand
-- **Sanitization:** DOMPurify
 - **Native shell:** Capacitor (Android)
 
 ## Getting started
