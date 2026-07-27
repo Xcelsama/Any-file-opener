@@ -20,6 +20,9 @@ import { parseEml } from '../lib/eml';
 import usePwaFileHandling from '../hooks/usePwaFileHandling';
 import CodeEditor from './CodeEditor';
 import PdfViewer from './PdfViewer';
+import ImageEditor from './ImageEditor';
+import AudioEditor from './AudioEditor';
+import VideoEditor from './VideoEditor';
 import FontPreview from './FontPreview';
 import ArchiveBrowser from './ArchiveBrowser';
 import EmailView from './EmailView';
@@ -569,6 +572,16 @@ export default function FileViewer() {
                   </button>
                 )}
 
+                {['image', 'audio', 'video'].includes(active.kind) && !mediaFailed && (
+                  <button
+                    onClick={() => setEditing((v) => !v)}
+                    title={editing ? 'Back to preview' : 'Edit'}
+                    className={`p-1.5 rounded hover:bg-slate-800 flex-shrink-0 ${editing ? 'text-amber-400' : 'text-slate-400'}`}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+
                 {(EDITABLE_KINDS.includes(active.kind) || ((active.kind === 'markdown' || active.kind === 'csv') && showRaw)) && (
                   <button
                     onClick={() => setEditing((v) => !v)}
@@ -620,7 +633,10 @@ export default function FileViewer() {
                   <NoPreviewCard note={noPreviewNote(active.category)} ext={active.ext} />
                 )}
 
-                {active.status === 'ready' && active.kind === 'image' && !mediaFailed && (
+                {active.status === 'ready' && active.kind === 'image' && !mediaFailed && editing && (
+                  <ImageEditor url={active.url} name={active.name} />
+                )}
+                {active.status === 'ready' && active.kind === 'image' && !mediaFailed && !editing && (
                   <div className="h-full flex items-center justify-center p-6 checker">
                     <img
                       src={active.url}
@@ -639,7 +655,10 @@ export default function FileViewer() {
                   <PdfViewer url={active.url} name={active.name} />
                 )}
 
-                {active.status === 'ready' && active.kind === 'audio' && !mediaFailed && (
+                {active.status === 'ready' && active.kind === 'audio' && !mediaFailed && editing && (
+                  <AudioEditor url={active.url} name={active.name} />
+                )}
+                {active.status === 'ready' && active.kind === 'audio' && !mediaFailed && !editing && (
                   <div className="h-full flex items-center justify-center p-6">
                     <audio
                       controls
@@ -654,7 +673,10 @@ export default function FileViewer() {
                   <NoPreviewCard note="This browser could not play this audio format." ext={active.ext} />
                 )}
 
-                {active.status === 'ready' && active.kind === 'video' && !mediaFailed && (
+                {active.status === 'ready' && active.kind === 'video' && !mediaFailed && editing && (
+                  <VideoEditor url={active.url} name={active.name} />
+                )}
+                {active.status === 'ready' && active.kind === 'video' && !mediaFailed && !editing && (
                   <div className="h-full flex items-center justify-center p-6">
                     <video
                       controls
