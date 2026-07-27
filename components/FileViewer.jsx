@@ -23,10 +23,13 @@ import PdfViewer from './PdfViewer';
 import ImageEditor from './ImageEditor';
 import AudioEditor from './AudioEditor';
 import VideoEditor from './VideoEditor';
+import CompareView from './CompareView';
+import CommandPalette from './CommandPalette';
 import FontPreview from './FontPreview';
 import ArchiveBrowser from './ArchiveBrowser';
 import EmailView from './EmailView';
 import NoPreviewCard from './NoPreviewCard';
+import { addRecentFile, getRecentFiles, removeRecentFile, clearRecentFiles, recentEntryToFile } from '../lib/recentFiles';
 
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds)) return null;
@@ -92,6 +95,12 @@ export default function FileViewer() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [compareIds, setCompareIds] = useState(null); // [idA, idB] while comparing
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [recentFiles, setRecentFiles] = useState([]);
+  const [batchBusy, setBatchBusy] = useState(false);
   const inputRef = useRef(null);
   const filesRef = useRef(files);
   const dragCounter = useRef(0);
@@ -99,6 +108,20 @@ export default function FileViewer() {
   useEffect(() => { filesRef.current = files; }, [files]);
   useEffect(() => () => { filesRef.current.forEach((f) => f.url && URL.revokeObjectURL(f.url)); }, []);
   useEffect(() => { setEditing(false); setShowRaw(false); setMediaFailed(false); setConvertOpen(false); }, [activeId]);
+
+  const refreshRecent = useCallback(() => { getRecentFiles().then(setRecentFiles); }, []);
+  useEffect(() => { refreshRecent(); }, [refreshRecent]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const updateFile = useCallback((id, patch) => {
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
@@ -268,7 +291,8 @@ export default function FileViewer() {
     setFiles((prev) => [...prev, ...records]);
     setActiveId((prev) => prev ?? records[0].id);
     records.forEach((rec, idx) => processFile(arr[idx], rec.id, rec));
-  }, [processFile]);
+    arr.forEach((file) => addRecentFile(file).then(refreshRecent));
+  }, [processFile, refreshRecent]);
 
   usePwaFileHandling(handleFiles);
 
@@ -283,8 +307,95 @@ export default function FileViewer() {
   };
 
   const selectFile = (id) => {
+    if (selectMode) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+      return;
+    }
     setActiveId(id);
     setSidebarOpen(false);
+  };
+
+  const toggleSelectMode = () => {
+    setSelectMode((v) => !v);
+    setSelectedIds(new Set());
+  };
+
+  const reopenRecent = async (entry) => {
+    const file = recentEntryToFile(entry);
+    handleFiles([file]);
+  };
+
+  const downloadSelectedAsZip = async () => {
+    setBatchBusy(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const selected = files.filter((f) => selectedIds.has(f.id));
+      await Promise.all(selected.map(async (f) => {
+        const res = await fetch(f.url);
+        const blob = await res.blob();
+        zip.file(f.name, blob);
+      }));
+      const content = await zip.generateAsync({ type: 'blob' });
+      const href = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = 'files.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  const batchConvertImages = async (format) => {
+    setBatchBusy(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const selected = files.filter((f) => selectedIds.has(f.id) && f.kind === 'image');
+      await Promise.all(selected.map((f) => new Promise((resolve) => {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          canvas.getContext('2d').drawImage(img, 0, 0);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const base = f.name.replace(/\.[^.]+$/, '');
+              zip.file(`${base}.${format}`, blob);
+            }
+            resolve();
+          }, format === 'jpeg' ? 'image/jpeg' : `image/${format}`, 0.92);
+        };
+        img.onerror = resolve;
+        img.src = f.url;
+      })));
+      const content = await zip.generateAsync({ type: 'blob' });
+      const href = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = `converted-${format}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  const startCompare = () => {
+    const ids = Array.from(selectedIds).slice(0, 2);
+    if (ids.length === 2) setCompareIds(ids);
   };
 
   const copyToClipboard = async (text, id) => {
@@ -362,6 +473,16 @@ export default function FileViewer() {
   visibleFiles.forEach((f) => { (grouped[f.category] ||= []).push(f); });
   const activeCategories = CATEGORY_ORDER.filter((c) => grouped[c]?.length);
 
+  const commandActions = [
+    { id: 'toggle-select', label: 'Select multiple files', run: toggleSelectMode },
+    { id: 'toggle-sidebar', label: 'Toggle sidebar', run: () => setSidebarOpen((v) => !v) },
+    { id: 'open-file', label: 'Open a file…', run: () => inputRef.current?.click() },
+    ...(active ? [
+      { id: 'download-active', label: `Download ${active.name}`, run: () => downloadFile(active) },
+      { id: 'close-active', label: `Close ${active.name}`, run: () => removeFile(active.id) },
+    ] : []),
+  ];
+
   return (
     <div
       className="h-screen w-full flex flex-col bg-slate-950 text-slate-200 select-none"
@@ -392,6 +513,22 @@ export default function FileViewer() {
         <span className="font-mono text-sm text-slate-400 sm:ml-1">anyfile.viewer</span>
         <span className="hidden md:inline text-xs text-slate-600">open, preview and edit almost anything</span>
         <div className="flex-1" />
+        {files.length > 0 && (
+          <button
+            onClick={toggleSelectMode}
+            className={`hidden sm:flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-md ${selectMode ? 'bg-amber-400 text-slate-900' : 'text-slate-400 hover:bg-slate-800'}`}
+            title="Select multiple files for batch actions"
+          >
+            {selectMode ? `${selectedIds.size} selected` : 'Select'}
+          </button>
+        )}
+        <button
+          onClick={() => setPaletteOpen(true)}
+          className="hidden sm:flex items-center gap-1.5 text-slate-500 hover:text-slate-300 px-2 py-1.5 rounded-md text-[11px]"
+          title="Command palette"
+        >
+          <Search size={13} /> <kbd className="border border-slate-700 rounded px-1">Ctrl K</kbd>
+        </button>
         <button
           onClick={() => setAboutOpen(true)}
           className="p-1.5 text-slate-500 hover:text-slate-300"
@@ -441,8 +578,17 @@ export default function FileViewer() {
                       <div
                         key={f.id}
                         onClick={() => selectFile(f.id)}
-                        className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 ${activeId === f.id ? 'bg-slate-800 border-amber-400' : 'border-transparent hover:bg-slate-800/50'}`}
+                        className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 ${activeId === f.id && !selectMode ? 'bg-slate-800 border-amber-400' : selectedIds.has(f.id) ? 'bg-slate-800/70 border-amber-400/50' : 'border-transparent hover:bg-slate-800/50'}`}
                       >
+                        {selectMode && (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(f.id)}
+                            onChange={() => selectFile(f.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="accent-amber-400 flex-shrink-0"
+                          />
+                        )}
                         {iconFor(f)}
                         <div className="min-w-0 flex-1">
                           <div className="text-xs truncate text-slate-200">
@@ -452,17 +598,45 @@ export default function FileViewer() {
                         </div>
                         {f.status === 'loading' && <Loader2 size={12} className="animate-spin text-slate-500" />}
                         {f.status === 'error' && <AlertTriangle size={12} className="text-red-400" />}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
-                          className="opacity-50 hover:opacity-100 text-slate-400 hover:text-red-400"
-                        >
-                          <X size={13} />
-                        </button>
+                        {!selectMode && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
+                            className="opacity-50 hover:opacity-100 text-slate-400 hover:text-red-400"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
                 ))}
               </div>
+
+              {selectMode && selectedIds.size > 0 && (
+                <div className="border-t border-slate-800 p-2 flex flex-wrap gap-1.5 flex-shrink-0 bg-slate-900/60">
+                  <button
+                    onClick={downloadSelectedAsZip}
+                    disabled={batchBusy}
+                    className="flex items-center gap-1 text-[11px] px-2 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+                  >
+                    <Archive size={12} /> Download {selectedIds.size} as .zip
+                  </button>
+                  {files.some((f) => selectedIds.has(f.id) && f.kind === 'image') && (
+                    <>
+                      <button onClick={() => batchConvertImages('png')} disabled={batchBusy} className="text-[11px] px-2 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50">→ PNG (.zip)</button>
+                      <button onClick={() => batchConvertImages('jpeg')} disabled={batchBusy} className="text-[11px] px-2 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50">→ JPG (.zip)</button>
+                      <button onClick={() => batchConvertImages('webp')} disabled={batchBusy} className="text-[11px] px-2 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50">→ WebP (.zip)</button>
+                    </>
+                  )}
+                  {selectedIds.size === 2 && (
+                    <button onClick={startCompare} className="flex items-center gap-1 text-[11px] px-2 py-1.5 rounded bg-amber-400 text-slate-900 font-medium">
+                      Compare these two
+                    </button>
+                  )}
+                  {batchBusy && <Loader2 size={13} className="animate-spin text-slate-500" />}
+                </div>
+              )}
+
               <button
                 onClick={() => inputRef.current?.click()}
                 className="flex items-center gap-1.5 justify-center text-xs text-slate-400 hover:text-amber-300 py-2.5 border-t border-slate-800 flex-shrink-0"
@@ -492,6 +666,32 @@ export default function FileViewer() {
                   still opens as a hex dump so you can see what's inside.
                 </div>
               </div>
+
+              {recentFiles.length > 0 && (
+                <div className="w-full max-w-sm text-left mt-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Recent</span>
+                    <button onClick={() => clearRecentFiles().then(refreshRecent)} className="text-[10px] text-slate-600 hover:text-slate-400">Clear</button>
+                  </div>
+                  <div className="border border-slate-800 rounded-lg overflow-hidden divide-y divide-slate-800">
+                    {recentFiles.map((entry) => (
+                      <div key={entry.id} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-900 cursor-pointer" onClick={() => reopenRecent(entry)}>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs truncate text-slate-300">{entry.name}</div>
+                          <div className="text-[10px] text-slate-600">{formatSize(entry.size)}</div>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeRecentFile(entry.id).then(refreshRecent); }}
+                          className="opacity-50 hover:opacity-100 text-slate-500 hover:text-red-400 flex-shrink-0"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-slate-600 mt-1.5">Stored only on this device — never uploaded.</div>
+                </div>
+              )}
             </div>
           )}
 
@@ -822,6 +1022,21 @@ export default function FileViewer() {
           )}
         </div>
       </div>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        files={files}
+        onSelectFile={(id) => { setActiveId(id); setSelectMode(false); }}
+        actions={commandActions}
+      />
+
+      {compareIds && (() => {
+        const fileA = files.find((f) => f.id === compareIds[0]);
+        const fileB = files.find((f) => f.id === compareIds[1]);
+        if (!fileA || !fileB) return null;
+        return <CompareView fileA={fileA} fileB={fileB} onClose={() => setCompareIds(null)} />;
+      })()}
     </div>
   );
 }
