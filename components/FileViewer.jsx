@@ -6,9 +6,10 @@ import {
   Upload, X, Copy, Download, Search, WrapText, FileCode2, FileImage,
   FileJson2, FileSpreadsheet, FileText, FileType2, Music, Video, Binary,
   Check, AlertTriangle, Loader2, FilePlus2, Eye, Code2, Pencil, Save, Wand2,
-  Type, Archive, Mail, File, Menu, Info, ImageDown,
+  Type, Archive, Mail, File, Menu, Info, ImageDown, QrCode,
 } from 'lucide-react';
 import AboutModal from './AboutModal';
+import QrTransfer from './QrTransfer';
 import {
   CATEGORIES, classify, formatSize, buildHexDump, looksLikeText, genId, noPreviewNote,
 } from '../lib/fileTypes';
@@ -101,6 +102,8 @@ export default function FileViewer() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [recentFiles, setRecentFiles] = useState([]);
   const [batchBusy, setBatchBusy] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrReceiveCode, setQrReceiveCode] = useState('');
   const inputRef = useRef(null);
   const filesRef = useRef(files);
   const dragCounter = useRef(0);
@@ -111,6 +114,15 @@ export default function FileViewer() {
 
   const refreshRecent = useCallback(() => { getRecentFiles().then(setRecentFiles); }, []);
   useEffect(() => { refreshRecent(); }, [refreshRecent]);
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('receive');
+    if (code) {
+      setQrReceiveCode(code);
+      setQrOpen(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -477,6 +489,7 @@ export default function FileViewer() {
     { id: 'toggle-select', label: 'Select multiple files', run: toggleSelectMode },
     { id: 'toggle-sidebar', label: 'Toggle sidebar', run: () => setSidebarOpen((v) => !v) },
     { id: 'open-file', label: 'Open a file…', run: () => inputRef.current?.click() },
+    { id: 'qr-transfer', label: 'Send or receive a file via QR code', run: () => setQrOpen(true) },
     ...(active ? [
       { id: 'download-active', label: `Download ${active.name}`, run: () => downloadFile(active) },
       { id: 'close-active', label: `Close ${active.name}`, run: () => removeFile(active.id) },
@@ -528,6 +541,13 @@ export default function FileViewer() {
           title="Command palette"
         >
           <Search size={13} /> <kbd className="border border-slate-700 rounded px-1">Ctrl K</kbd>
+        </button>
+        <button
+          onClick={() => setQrOpen(true)}
+          className="p-1.5 text-slate-500 hover:text-slate-300"
+          title="Send or receive a file via QR code"
+        >
+          <QrCode size={16} />
         </button>
         <button
           onClick={() => setAboutOpen(true)}
@@ -1037,6 +1057,14 @@ export default function FileViewer() {
         if (!fileA || !fileB) return null;
         return <CompareView fileA={fileA} fileB={fileB} onClose={() => setCompareIds(null)} />;
       })()}
+
+      <QrTransfer
+        open={qrOpen}
+        onClose={() => { setQrOpen(false); setQrReceiveCode(''); }}
+        activeFile={active}
+        initialReceiveCode={qrReceiveCode}
+        onFileReceived={(file) => { handleFiles([file]); setQrOpen(false); }}
+      />
     </div>
   );
 }
