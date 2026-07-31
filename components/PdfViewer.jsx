@@ -10,8 +10,11 @@ import {
 // works there, but Android's WebView has no built-in PDF viewer at all — it just
 // shows a blank frame. Drawing to a <canvas> works identically everywhere: web,
 // installed desktop PWA, and the Android app's WebView.
-const PDFJS_VERSION = '3.11.174';
-const WORKER_SRC = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+// Served from public/pdf.worker.min.js (copied there automatically from
+// node_modules/pdfjs-dist by `npm install` — see scripts/copy-pdf-worker.js).
+// Must NOT point at a CDN: this app promises files never leave the device,
+// and a remote worker script means PDFs silently fail to open offline.
+const WORKER_SRC = '/pdf.worker.min.js';
 
 export default function PdfViewer({ url, name }) {
   const [status, setStatus] = useState('loading'); // loading | ready | error

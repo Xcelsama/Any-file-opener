@@ -27,6 +27,9 @@ android/app/src/main/assets/capacitor.plugins.json
 *.aab
 *.ipa
 
+# Auto-copied by scripts/copy-pdf-worker.js (postinstall) — regenerated, not source
+/public/pdf.worker.min.js
+
 # Env / logs / OS
 .env*.local
 npm-debug.log*
