@@ -1,0 +1,12 @@
+AnyFile Viewer opens nearly any file type directly on your device — documents, spreadsheets, images, audio, video, archives, code, and more — without uploading anything anywhere.
+
+Features:
+* View and edit text, code, and Markdown files with syntax highlighting
+* Open Word, Excel, and CSV files
+* Browse ZIP archives
+* View images and PDFs
+* Play audio and video, with basic editing
+* Compare two files with a built-in diff viewer
+* Transfer files between your own devices via QR code
+
+Everything runs locally. Files are processed entirely on your device — there is no server, no account, and no analytics.

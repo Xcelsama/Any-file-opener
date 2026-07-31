@@ -1,0 +1,1 @@
+Removed dependency on a remote server — the app now runs fully offline. Fixed PDF viewer to load its engine locally instead of from the internet. Added a safety check for very large files opened via "Open with."
