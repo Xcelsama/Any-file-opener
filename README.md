@@ -35,7 +35,7 @@ No uploads. No backend. No account. No ads. Your files never leave your machine.
 | Platform | Link |
 |---|---|
 | 🌐 Web | [any-file-opener-ten.vercel.app](https://any-file-opener-ten.vercel.app/) |
-| 📱 Android (APK) | [**Download latest APK**](https://github.com/Xcelsama/Any-file-opener/releases/download/App/AnyFile.Viewer.-.v1.0.apk) |
+| 📱 Android (APK) | [**Download latest APK**](https://release-assets.githubusercontent.com/github-production-release-asset/1311393224/1bcd1ae2-24bc-4848-b160-7271fa5460dc?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-01T22%3A04%3A43Z&rscd=attachment%3B+filename%3DAnyFileViewer.apk&rsct=application%2Fvnd.android.package-archive&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-01T21%3A04%3A42Z&ske=2026-08-01T22%3A04%3A43Z&sks=b&skv=2018-11-09&sig=c%2FtTZ15tmi62c96I4xkhBwjk%2FfpF2yxjsCbVw1hmDpw%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4NTYxOTY1MiwibmJmIjoxNzg1NjE5MzUyLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.2ZRcIbBc9vJFySeWxE7hicxzp9fMQmkLOUQRq9cRNFQ&response-content-disposition=attachment%3B%20filename%3DAnyFileViewer.apk&response-content-type=application%2Fvnd.android.package-archive) |
 | 💻 Desktop PWA | Install directly from the web link above (Chrome/Edge → install icon in the address bar) |
 
 > The Android APK is not on the Play Store yet — you'll need to allow "install from unknown sources" the first time. This is a self-signed debug build; nothing in it phones home or requests unnecessary permissions.
